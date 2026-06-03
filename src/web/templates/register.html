@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Register — Sentry Turret V3{% endblock %}
+{% block content %}
+<div style="max-width:600px;margin:30px auto;display:flex;flex-direction:column;gap:20px">
+
+  <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px">
+    <h2 style="font-size:.85rem;color:var(--muted);letter-spacing:1px;margin-bottom:14px">ENROLL NEW FACE</h2>
+    <div style="margin-bottom:12px">
+      <label>Person Name</label><br>
+      <input type="text" id="enroll-name" placeholder="e.g. Alice"
+             style="width:100%;margin-top:4px">
+    </div>
+    <img src="/stream" id="reg-feed"
+         style="width:100%;border:1px solid var(--border);border-radius:4px;margin-bottom:12px">
+    <div style="display:flex;gap:10px">
+      <button class="primary" onclick="snapshot()" style="flex:1">Capture Snapshot</button>
+      <button onclick="trainProfile()" style="flex:1">Train Model</button>
+    </div>
+    <p id="capture-status" style="margin-top:10px;font-size:.8rem;color:var(--muted)">—</p>
+  </section>
+
+  <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:20px">
+    <h2 style="font-size:.85rem;color:var(--muted);letter-spacing:1px;margin-bottom:14px">ENROLLED PROFILES</h2>
+    {% if profiles %}
+    <div style="display:flex;flex-direction:column;gap:12px">
+      {% for p in profiles %}
+      <div id="card-{{ loop.index }}" style="border:1px solid var(--border);border-radius:4px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:.95rem;font-weight:bold">{{ p }}</span>
+          <button class="danger" onclick="deleteProfile('{{ p }}')">Delete</button>
+        </div>
+        <!-- Profile meta form -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+          <div>
+            <label>Classification</label><br>
+            <select id="cls-{{ loop.index }}" style="width:100%;margin-top:4px">
+              <option value="safe">Safe</option>
+              <option value="hostile">Hostile</option>
+            </select>
+          </div>
+          <div>
+            <label>Fire Mode Override</label><br>
+            <select id="fm-{{ loop.index }}" style="width:100%;margin-top:4px">
+              <option value="">— none —</option>
+              <option value="semi">Semi</option>
+              <option value="burst">Burst</option>
+              <option value="full_auto">Full Auto</option>
+            </select>
+          </div>
+          <div>
+            <label>Detect Sound</label><br>
+            <select id="snd-{{ loop.index }}" style="width:100%;margin-top:4px">
+              <option value="">— default —</option>
+              <option value="targeting">targeting</option>
+              <option value="engaging">engaging</option>
+              <option value="armed">armed</option>
+              <option value="mission_complete">mission_complete</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="saveMeta('{{ p }}', {{ loop.index }})"
+                style="margin-top:10px;width:100%;border-color:var(--accent);color:var(--accent)">
+          Save Profile Settings
+        </button>
+        <p id="meta-status-{{ loop.index }}" style="font-size:.75rem;color:var(--muted);margin-top:6px"></p>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--muted);font-size:.85rem">No profiles enrolled.</p>
+    {% endif %}
+  </section>
+
+</div>
+
+<script>
+// Load existing meta for each profile on page load
+const profiles = {{ profiles | tojson }};
+
+function post(url, params={}) {
+  const fd = new FormData();
+  Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+  return fetch(url, {method:'POST', body: fd}).then(r => r.json());
+}
+
+function snapshot() {
+  const name = document.getElementById('enroll-name').value.trim();
+  if (!name) { alert('Enter a name first'); return; }
+  post('/api/register/snapshot', {name}).then(d => {
+    document.getElementById('capture-status').textContent =
+      d.error ? 'Error: ' + d.error : `Saved snapshot #${d.count}: ${d.saved}`;
+  });
+}
+
+function trainProfile() {
+  const name = document.getElementById('enroll-name').value.trim();
+  if (!name) { alert('Enter a name first'); return; }
+  post('/api/register/train', {name}).then(d => {
+    document.getElementById('capture-status').textContent =
+      d.error ? 'Error: ' + d.error : `Trained '${d.name}' on ${d.samples} samples. Reload to see.`;
+  });
+}
+
+function deleteProfile(name) {
+  if (!confirm(`Delete profile '${name}'?`)) return;
+  fetch('/api/register/' + encodeURIComponent(name), {method:'DELETE'})
+    .then(r => r.json())
+    .then(d => { if (!d.error) location.reload(); else alert(d.error); });
+}
+
+function saveMeta(name, idx) {
+  const cls  = document.getElementById('cls-' + idx).value;
+  const fm   = document.getElementById('fm-'  + idx).value;
+  const snd  = document.getElementById('snd-' + idx).value;
+  post('/api/register/' + encodeURIComponent(name) + '/meta',
+       {classification: cls, fire_mode: fm, detect_sound: snd})
+    .then(d => {
+      const st = document.getElementById('meta-status-' + idx);
+      st.textContent = d.error ? 'Error: ' + d.error : 'Saved.';
+      st.style.color = d.error ? 'var(--danger)' : 'var(--accent)';
+    });
+}
+
+// Populate meta fields from API on page load
+profiles.forEach((name, i) => {
+  const idx = i + 1;
+  fetch('/api/register/' + encodeURIComponent(name) + '/meta')
+    .then(r => r.json())
+    .then(d => {
+      const cls = document.getElementById('cls-' + idx);
+      const fm  = document.getElementById('fm-'  + idx);
+      const snd = document.getElementById('snd-' + idx);
+      if (cls && d.classification) cls.value = d.classification;
+      if (fm  && d.fire_mode)      fm.value  = d.fire_mode;
+      if (snd && d.detect_sound)   snd.value = d.detect_sound;
+    }).catch(() => {});
+});
+</script>
+{% endblock %}

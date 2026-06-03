@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Ops — Sentry Turret V3{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-top:16px">
+
+  <!-- LEFT: stream -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="position:relative">
+      <img src="/stream" id="feed"
+           style="width:100%;border:1px solid var(--border);border-radius:4px;display:block;">
+      <!-- Target lock indicator -->
+      <div id="lock-indicator" style="display:none;position:absolute;top:8px;left:50%;
+           transform:translateX(-50%);padding:3px 12px;border-radius:12px;font-size:.75rem;
+           font-weight:bold;letter-spacing:1px;background:rgba(0,0,0,.6)">
+      </div>
+    </div>
+
+    <!-- Engagement log -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px">ENGAGEMENT LOG</h2>
+        <button onclick="clearLog()" style="font-size:.7rem;padding:3px 8px">Clear</button>
+      </div>
+      <div style="overflow-y:auto;max-height:160px">
+        <table id="log-table" style="width:100%;border-collapse:collapse;font-size:.75rem">
+          <thead>
+            <tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">
+              <th style="padding:3px 6px">Time</th>
+              <th style="padding:3px 6px">Target</th>
+              <th style="padding:3px 6px">Mode</th>
+              <th style="padding:3px 6px">Ammo</th>
+              <th style="padding:3px 6px">Fired</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="5" style="color:var(--muted);padding:6px;text-align:center">No entries yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- RIGHT: controls -->
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- Mode -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">OPERATING MODE</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="setMode('autonomous')"  id="btn-auto">Autonomous</button>
+        <button onclick="setMode('patrol')"      id="btn-patrol">Patrol</button>
+        <button onclick="setMode('manual')"      id="btn-manual">Manual</button>
+        <button onclick="setMode('registration')" id="btn-reg">Registration</button>
+      </div>
+    </section>
+
+    <!-- Safety -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">SAFETY <span style="font-size:.7rem;color:var(--muted)">[A] arm  [D] disarm</span></h2>
+      <div style="display:flex;gap:8px">
+        <button class="danger" onclick="arm()">ARM</button>
+        <button class="primary" onclick="disarm()">DISARM</button>
+      </div>
+      <p id="arm-status" style="margin-top:8px;font-size:.8rem;color:var(--muted)">—</p>
+    </section>
+
+    <!-- Fire mode -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">FIRE MODE</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="setFireMode('semi')">Semi</button>
+        <button onclick="setFireMode('burst')">Burst</button>
+        <button onclick="setFireMode('full_auto')">Full Auto</button>
+      </div>
+    </section>
+
+    <!-- Pan / Tilt -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">PAN / TILT <span style="font-size:.7rem;color:var(--muted)">[arrow keys]</span></h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label>Pan (150–600)</label>
+          <input type="range" id="pan-slider" min="150" max="600" value="375"
+                 oninput="updatePanTilt()" style="width:100%">
+          <span id="pan-val" style="font-size:.75rem">375</span>
+        </div>
+        <div>
+          <label>Tilt (150–600)</label>
+          <input type="range" id="tilt-slider" min="150" max="600" value="375"
+                 oninput="updatePanTilt()" style="width:100%">
+          <span id="tilt-val" style="font-size:.75rem">375</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:130px;margin:0 auto">
+        <span></span>
+        <button onclick="delta(0,20)">&#9650;</button>
+        <span></span>
+        <button onclick="delta(-20,0)">&#9664;</button>
+        <button onclick="centre()">&#9679;</button>
+        <button onclick="delta(20,0)">&#9654;</button>
+        <span></span>
+        <button onclick="delta(0,-20)">&#9660;</button>
+        <span></span>
+      </div>
+    </section>
+
+    <!-- Fire & Ammo -->
+    <section style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px">
+      <h2 style="font-size:.8rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px">FIRE CONTROL <span style="font-size:.7rem;color:var(--muted)">[space]</span></h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="danger" onclick="fire()" style="flex:1;padding:12px">FIRE</button>
+        <button onclick="reload()">RELOAD</button>
+      </div>
+      <p id="ammo-display" style="margin-top:8px;font-size:.85rem">Ammo: —</p>
+      <p id="cooldown-display" style="font-size:.78rem;color:var(--warn);min-height:1.1em"></p>
+    </section>
+
+  </div><!-- /right -->
+</div>
+
+<script>
+/* ---- keyboard shortcuts -------------------------------------------- */
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  switch (e.key) {
+    case 'ArrowUp':    e.preventDefault(); delta(0, 20);  break;
+    case 'ArrowDown':  e.preventDefault(); delta(0, -20); break;
+    case 'ArrowLeft':  e.preventDefault(); delta(-20, 0); break;
+    case 'ArrowRight': e.preventDefault(); delta(20, 0);  break;
+    case ' ':          e.preventDefault(); fire();        break;
+    case 'a': case 'A': arm();    break;
+    case 'd': case 'D': disarm(); break;
+    case 'm': case 'M': toggleMute(); break;
+  }
+});
+
+/* ---- API helpers ---------------------------------------------------- */
+function post(url, params={}) {
+  const fd = new FormData();
+  Object.entries(params).forEach(([k,v]) => fd.append(k, v));
+  return fetch(url, {method:'POST', body: fd}).then(r => r.json());
+}
+
+function setMode(m) {
+  post('/api/mode', {mode: m}).then(d => console.log('mode', d));
+}
+
+function setFireMode(fm) {
+  post('/api/fire_mode', {fire_mode: fm}).then(d => console.log('fire_mode', d));
+}
+
+function arm()    { post('/api/arm').then(d => { document.getElementById('arm-status').textContent = 'ARMED'; }); }
+function disarm() { post('/api/disarm').then(d => { document.getElementById('arm-status').textContent = 'SAFE'; }); }
+
+function fire() {
+  post('/api/fire').then(d => {
+    document.getElementById('ammo-display').textContent = 'Ammo: ' + d.ammo + (d.fired ? '' : ' [BLOCKED]');
+  });
+}
+
+function reload() {
+  post('/api/reload').then(d => {
+    document.getElementById('ammo-display').textContent = 'Ammo: ' + d.ammo;
+  });
+}
+
+let panTiltTimer = null;
+function updatePanTilt() {
+  const p = parseInt(document.getElementById('pan-slider').value);
+  const t = parseInt(document.getElementById('tilt-slider').value);
+  document.getElementById('pan-val').textContent = p;
+  document.getElementById('tilt-val').textContent = t;
+  clearTimeout(panTiltTimer);
+  panTiltTimer = setTimeout(() => post('/api/pan_tilt', {pan: p, tilt: t}), 80);
+}
+
+function delta(pd, td) {
+  post('/api/pan_tilt/delta', {pan_delta: pd, tilt_delta: td}).then(d => {
+    document.getElementById('pan-slider').value = d.pan;
+    document.getElementById('tilt-slider').value = d.tilt;
+    document.getElementById('pan-val').textContent = d.pan;
+    document.getElementById('tilt-val').textContent = d.tilt;
+  });
+}
+
+function centre() {
+  post('/api/pan_tilt', {pan: 375, tilt: 375}).then(d => {
+    document.getElementById('pan-slider').value = 375;
+    document.getElementById('tilt-slider').value = 375;
+    document.getElementById('pan-val').textContent = 375;
+    document.getElementById('tilt-val').textContent = 375;
+  });
+}
+
+/* ---- target lock indicator ----------------------------------------- */
+function _updateLockIndicator(d) {
+  const el = document.getElementById('lock-indicator');
+  if (!d.tracking) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'block';
+  if (d.is_firing) {
+    el.textContent = '● FIRING';
+    el.style.color = '#f44336';
+    el.style.border = '1px solid #f44336';
+  } else if (d.target_acquired) {
+    el.textContent = '◎ ACQUIRED';
+    el.style.color = '#ffb300';
+    el.style.border = '1px solid #ffb300';
+  } else {
+    el.textContent = '○ DETECTING';
+    el.style.color = '#00e676';
+    el.style.border = '1px solid #00e676';
+  }
+}
+
+/* ---- cooldown display ---------------------------------------------- */
+function _updateCooldown(d) {
+  const el = document.getElementById('cooldown-display');
+  if (d.cooldown_remaining > 0) {
+    el.textContent = 'Cooldown: ' + d.cooldown_remaining.toFixed(1) + 's';
+  } else {
+    el.textContent = '';
+  }
+}
+
+/* ---- engagement log ------------------------------------------------ */
+let _logEntries = [];
+
+function _updateLog(entries) {
+  if (JSON.stringify(entries) === JSON.stringify(_logEntries)) return;
+  _logEntries = entries;
+  const tbody = document.getElementById('log-body');
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:6px;text-align:center">No entries yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = entries.map(e => `
+    <tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:3px 6px;color:var(--muted)">${e.timestamp}</td>
+      <td style="padding:3px 6px">${e.target}</td>
+      <td style="padding:3px 6px;color:var(--muted)">${e.mode}</td>
+      <td style="padding:3px 6px">${e.ammo}</td>
+      <td style="padding:3px 6px;color:${e.fired ? 'var(--danger)' : 'var(--muted)'}">${e.fired ? 'YES' : 'NO'}</td>
+    </tr>`).join('');
+}
+
+function clearLog() {
+  _logEntries = [];
+  document.getElementById('log-body').innerHTML =
+    '<tr><td colspan="5" style="color:var(--muted);padding:6px;text-align:center">No entries yet</td></tr>';
+}
+
+function pollLog() {
+  fetch('/api/log').then(r => r.json()).then(_updateLog).catch(() => {});
+}
+
+/* ---- status update hook -------------------------------------------- */
+function onStatusUpdate(d) {
+  document.getElementById('ammo-display').textContent = 'Ammo: ' + d.ammo;
+  document.getElementById('arm-status').textContent = d.armed ? 'ARMED' : 'SAFE';
+
+  const modeMap = {autonomous: 'auto', patrol: 'patrol', manual: 'manual', registration: 'reg'};
+  ['auto','patrol','manual','reg'].forEach(id => {
+    const btn = document.getElementById('btn-' + id);
+    if (btn) btn.style.borderColor = '';
+  });
+  const activeBtn = document.getElementById('btn-' + modeMap[d.mode]);
+  if (activeBtn) activeBtn.style.borderColor = 'var(--accent)';
+
+  _updateLockIndicator(d);
+  _updateCooldown(d);
+}
+
+setInterval(pollLog, 2000);
+pollLog();
+</script>
+{% endblock %}

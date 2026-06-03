@@ -1,0 +1,23 @@
+# Core vision
+opencv-contrib-python>=4.8.0
+# numpy<2 required: system picamera2/simplejpeg compiled against numpy 1.x ABI
+numpy<2
+
+# Hardware drivers (Pi only — install on device)
+RPi.GPIO>=0.7.1
+adafruit-circuitpython-pca9685>=3.4.0
+adafruit-blinka>=8.0.0
+
+# Web framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+jinja2>=3.1.0
+python-multipart>=0.0.9
+
+# Testing
+pytest>=8.0.0
+httpx>=0.27.0  # FastAPI TestClient dependency
+
+# Documentation
+mkdocs>=1.5.0
+mkdocs-material>=9.0.0
