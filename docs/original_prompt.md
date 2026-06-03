@@ -6,7 +6,7 @@
 
 **Sentry Turret V3**
 
-Create a Python 3.10+ autonomous sentry turret project called **"Sentry Turret V3"** hosted on a self-hosted Gitea instance at `http://192.168.0.90:673/`. The system runs on a **Raspberry Pi 4 Model B (Debian Bookworm)**.
+Create a Python 3.10+ autonomous sentry turret project called **"Sentry Turret V3"** hosted on a self-hosted Gitea instance at `http://192.168.x.x:xxxx/`. The system runs on a **Raspberry Pi 4 Model B (Debian Bookworm)**.
 
 **Hardware:**
 
@@ -65,4 +65,4 @@ Create a Python 3.10+ autonomous sentry turret project called **"Sentry Turret V
 - Manually launched via single entry point `main.py` — no systemd
 - Graceful shutdown handler: servos centre, GPIO cleanup, cease fire, play shutdown sound
 
-**Tech Stack:** Python 3.10+, OpenCV, Adafruit PCA9685, RPi.GPIO, FastAPI, Jinja2, pytest, MkDocs. Version control via Gitea at `http://192.168.0.90:673/`.
+**Tech Stack:** Python 3.10+, OpenCV, Adafruit PCA9685, RPi.GPIO, FastAPI, Jinja2, pytest, MkDocs. Version control via Gitea at `http://192.168.x.x:xxxx/`.

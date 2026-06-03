@@ -1,6 +1,6 @@
 site_name: Sentry Turret V3
 site_description: Autonomous face-tracking sentry turret — Raspberry Pi 4 + OpenCV + FastAPI
-repo_url: http://192.168.0.90:673/hermes/sentry-turret-v3
+repo_url: http://192.168.x.x:xxxx/hermes/sentry-turret-v3
 
 theme:
   name: material
