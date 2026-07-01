@@ -34,7 +34,7 @@ Autonomous face-tracking sentry turret built on a Raspberry Pi 4 Model B. Detect
 ## Quick Start
 
 ```bash
-git clone http://192.168.x.x:xxxx/claudette/sentry-turret-v3.git
+git clone https://github.com/aejx00/sentry-turret-v3.git
 cd sentry-turret-v3
 
 python3 -m venv .venv

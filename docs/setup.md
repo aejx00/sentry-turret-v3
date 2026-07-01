@@ -11,7 +11,7 @@
 ## 1. Clone the Repository
 
 ```bash
-git clone http://192.168.x.x:xxxx/hermes/sentry-turret-v3.git
+git clone https://github.com/aejx00/sentry-turret-v3.git
 cd sentry-turret-v3
 ```
 
